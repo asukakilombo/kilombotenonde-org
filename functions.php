@@ -173,41 +173,55 @@ function custom_pv_column_css() {
 add_action('admin_head', 'custom_pv_column_css');
 
 /**
- * 1. ADD STICKY HEADER CSS
- * Applies 'position: sticky' to the main Astra header wrapper.
+ * 1. 【完成版】STICKY HEADER CSS
+ * 全体の枠を固定し、スクロールで背景を80%から100%不透明にします。
  */
 function astra_child_sticky_header_css() {
     ?>
     <style>
-        /* The main header wrapper */
-        .site-header {
-            position: -webkit-sticky; /* Safari support */
-            position: sticky;
+        /* --- 初期状態：全体の枠（ラッパー）を固定し、80%透過にする --- */
+        .ast-main-header-wrap {
+            position: fixed !important; 
             top: 0;
+            left: 0;
             width: 100%;
-            z-index: 9999; /* Ensure it sits above other content */
-            transition: all 0.3s ease-in-out; /* Smooth animation for background/shadow */
+            z-index: 9999;
+            
+            /* 初期状態の背景色：#0F2540 の 80% 透過 */
+            background-color: rgba(15, 37, 64, 0.8) !important;
+            box-shadow: none !important;
+            
+            /* 色の変化を滑らかにするアニメーション */
+            transition: background-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out; 
         }
 
-        /* * OPTIONAL: Styles that apply ONLY when scrolling down.
-         * The JS below adds the class 'ast-sticky-active' when you scroll past 50px.
-         */
-        .site-header.ast-sticky-active {
-            background-color: #ffffff; /* Ensure background is solid white */
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1); /* Add a nice shadow */
+        /* 内部のヘッダー要素の背景を透明にして、外側の色を通す */
+        .site-header {
+            background-color: transparent !important;
+            background-image: none !important;
+            box-shadow: none !important;
+        }
+
+        /* ヘッダーの後ろにコンテンツを潜り込ませる設定 */
+        body {
+            padding-top: 0 !important;
+        }
+
+        /* --- スクロールダウン時：100%不透明にする --- */
+        .ast-main-header-wrap.ast-sticky-active {
+            /* スクロール後の背景色：#0F2540 の 100% 不透明 */
+            background-color: rgba(15, 37, 64, 1.0) !important;
             
-            /* Uncomment lines below if you want to shrink the header on scroll */
-            /* padding-top: 0.5em; */
-            /* padding-bottom: 0.5em; */
+            /* スクロール時に軽い影をつけてコンテンツと分離 */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important; 
         }
         
-        /* Fix for admin bar overlapping the header when logged in */
-        body.admin-bar .site-header {
+        /* 管理画面ログイン時のズレ防止 */
+        body.admin-bar .ast-main-header-wrap {
             top: 32px;
         }
-        
         @media screen and (max-width: 782px) {
-            body.admin-bar .site-header {
+            body.admin-bar .ast-main-header-wrap {
                 top: 46px;
             }
         }
@@ -217,18 +231,19 @@ function astra_child_sticky_header_css() {
 add_action('wp_head', 'astra_child_sticky_header_css');
 
 /**
- * 2. ADD SCROLL DETECTION JS
- * Adds a class to the header when the user scrolls down.
+ * 2. 【完成版】SCROLL DETECTION JS
+ * クラスを付与する対象を「.ast-main-header-wrap」に変更します。
  */
 function astra_child_sticky_header_js() {
     ?>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        var header = document.querySelector('.site-header');
+        // クラスをつける対象を外側のラッパーに変更
+        var header = document.querySelector('.ast-main-header-wrap');
         
         if (header) {
             window.addEventListener('scroll', function() {
-                // If we have scrolled more than 50px, add the active class
+                // 50px以上スクロールしたらアクティブクラスを付与
                 if (window.scrollY > 50) { 
                     header.classList.add('ast-sticky-active');
                 } else {
@@ -241,3 +256,28 @@ function astra_child_sticky_header_js() {
     <?php
 }
 add_action('wp_footer', 'astra_child_sticky_header_js');
+
+/**
+ * PMPro: ログイン後に各言語のDashboardへリダイレクト
+ */
+function my_custom_login_redirect( $redirect_to, $request, $user ) {
+    // ログインに失敗した場合などはそのまま
+    if ( ! isset( $user->ID ) ) {
+        return $redirect_to;
+    }
+
+    // Polylangの現在の言語を取得
+    $lang = function_exists('pll_current_language') ? pll_current_language() : 'pt';
+
+    // 言語ごとに飛ばす先のURL（固定ページのパーマリンクに合わせて変更してください）
+    switch ( $lang ) {
+        case 'en':
+            return home_url( '/dashboard-en/' ); // 英語
+        case 'ja':
+            return home_url( '/dashboard-jp/' ); // 日本語
+        case 'pt':
+        default:
+            return home_url( '/pt-dashboard/' ); // ポルトガル語（メイン）
+    }
+}
+add_filter( 'login_redirect', 'my_custom_login_redirect', 10, 3 );
